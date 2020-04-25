@@ -1,6 +1,7 @@
 """Ego-Splitter class"""
 
 import community
+import numpy as np
 import networkx as nx
 from tqdm import tqdm
 
@@ -70,6 +71,43 @@ class EgoNetSplitter(object):
         self.persona_graph_edges = [self._get_new_edge_ids(e) for e in tqdm(self.graph.edges())]
         self.persona_graph = nx.from_edgelist(self.persona_graph_edges)
 
+    def _create_persona_feature(self, feature):
+        persona_size = len(self.persona_graph.nodes())
+        persona_feature_ids = [self.personality_map[n] for n in range(persona_size)]
+        persona_feature = feature[persona_feature_ids]
+        return persona_feature
+
+    def _cosine_weight(self, G, feature):
+        row, col = zip(*G.edges())
+        row = list(row)
+        col = list(col)
+        inner_prod = np.array(feature[row].multiply(feature[col]).sum(axis=1)).reshape(-1)
+        row_modulus = np.array(np.sqrt(feature[row].power(2).sum(axis=1))).reshape(-1)
+        col_modulus = np.array(np.sqrt(feature[col].power(2).sum(axis=1))).reshape(-1)
+        cosine = (inner_prod + 2) / (row_modulus * col_modulus + 1)
+        G.add_weighted_edges_from(list(zip(row, col, cosine)))
+
+    def _eucli_weight(self, G, feature):
+        row, col = zip(*G.edges())
+        row = list(row)
+        col = list(col)
+        dist = np.array((feature[row]-feature[col]).power(2).sum(axis=1)).reshape(-1)
+        dist = 1 / (dist + 0.1)
+        G.add_weighted_edges_from(list(zip(row, col, dist)))
+    
+    def _comb_weight(self, G, feature):
+        row, col = zip(*G.edges())
+        row = list(row)
+        col = list(col)
+        dist = np.array((feature[row]-feature[col]).power(2).sum(axis=1)).reshape(-1)
+        dist = 1 / (dist + 0.1)
+        inner_prod = np.array(feature[row].multiply(feature[col]).sum(axis=1)).reshape(-1)
+        row_modulus = np.array(np.sqrt(feature[row].power(2).sum(axis=1))).reshape(-1)
+        col_modulus = np.array(np.sqrt(feature[col].power(2).sum(axis=1))).reshape(-1)
+        cosine = (inner_prod + 2) / (row_modulus * col_modulus + 1)
+        weight = dist + cosine
+        G.add_weighted_edges_from(list(zip(row, col, weight)))
+
     def _create_partitions(self):
         """
         Creating a non-overlapping clustering of nodes in the persona graph.
@@ -80,7 +118,7 @@ class EgoNetSplitter(object):
         for node, membership in self.partitions.items():
             self.overlapping_partitions[self.personality_map[node]].append(membership)
 
-    def fit(self, graph):
+    def fit(self, graph, feature, weight='none'):
         """
         Fitting an Ego-Splitter clustering model.
 
@@ -91,6 +129,19 @@ class EgoNetSplitter(object):
         self._create_egonets()
         self._map_personalities()
         self._create_persona_graph()
+        if weight == 'cosine':
+            persona_feature = self._create_persona_feature(feature)
+            self._cosine_weight(self.persona_graph, persona_feature)
+        elif weight == 'eucli':
+            persona_feature = self._create_persona_feature(feature)
+            self._eucli_weight(self.persona_graph, persona_feature)
+        elif weight == 'comb':
+            persona_feature = self._create_persona_feature(feature)
+            self._comb_weight(self.persona_graph, persona_feature)
+        elif weight == 'none':
+            pass
+        else:
+            raise ValueError("No such weight:", weight)
         self._create_partitions()
 
     def get_memberships(self):
