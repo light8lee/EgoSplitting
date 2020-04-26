@@ -124,6 +124,14 @@ def load_dataset(file_name):
         return graph
 
 
+def generate_2hop_graph(graph_1hop):
+    A = nx.adjacency_matrix(graph_1hop)
+    A2 = A * A
+    A2[A2>0] = 1
+    graph_2hop = nx.from_scipy_sparse_matrix(A2)
+    return graph_2hop
+
+
 def output_res(partition, outfile_name):
     #排序
     key_list = list(partition.keys())
