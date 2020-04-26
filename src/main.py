@@ -61,5 +61,5 @@ if __name__ == "__main__":
     parser.add_argument("--hop2", default=False, action="store_true", dest="hop2")
     args = parser.parse_args()
 
-    validation(args.weight)
-    predict(args.weight)
+    validation(args)
+    predict(args)
