@@ -128,8 +128,8 @@ def generate_2hop_graph(graph_1hop):
     A = nx.adjacency_matrix(graph_1hop)
     A2 = A * A
     A2[A2>0] = 1
-    A = A.tolil()
-    A.setdiag(0)
+    A2 = A2.tolil()
+    A2.setdiag(0)
     graph_2hop = nx.from_scipy_sparse_matrix(A2)
     return graph_2hop
 
