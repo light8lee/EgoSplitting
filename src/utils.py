@@ -1,7 +1,6 @@
 """General data treatment utilities."""
 
 import json
-# import torch
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -136,14 +135,18 @@ def generate_2hop_graph(graph_1hop):
 
 
 def generate_sim_graph(adj, feature, threshold=0.5):
+    import torch
     # feature = feature.tolil()
-    inner_prod = np.array(feature * feature.transpose())
-    modulus = np.array(np.sqrt(feature.power(2).sum(axis=1) + 1e-9))
-    modulus = modulus * modulus.transpose()
+    feature = torch.from_numpy(feature.toarray()).cuda()
+    inner_prod = torch.matmul(feature, feature.transpose(0, 1))
+    modulus = torch.sqrt(torch.pow(feature, 2).sum(dim=1, keepdim=True))
+    modulus = modulus * modulus.transpose(1, 0)
     cos_sim = inner_prod / modulus
-    adj[cos_sim>threshold] = 1
+    print('cos_sim:', cos_sim.shape)
+    adj = adj.tolil()
+    adj[(cos_sim>threshold).cpu().numpy()] = 1
     adj.setdiag(0)
-    graph = nx.from_scipy_sparse_matrix(adj)
+    graph = nx.from_numpy_array(adj)
     return graph
 
 
