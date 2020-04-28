@@ -127,11 +127,24 @@ def load_dataset(file_name):
 def generate_2hop_graph(graph_1hop):
     A = nx.adjacency_matrix(graph_1hop)
     A2 = A * A
+    A2 += A
     A2[A2>0] = 1
     A2 = A2.tolil()
     A2.setdiag(0)
     graph_2hop = nx.from_scipy_sparse_matrix(A2)
     return graph_2hop
+
+
+def generate_sim_graph(adj, feature, threshold=0.5):
+    # feature = feature.tolil()
+    inner_prod = np.array(feature * feature.transpose())
+    modulus = np.array(np.sqrt(feature.power(2).sum(axis=1) + 1e-9))
+    modulus = modulus * modulus.transpose()
+    cos_sim = inner_prod / modulus
+    adj[cos_sim>threshold] = 1
+    adj.setdiag(0)
+    graph = nx.from_scipy_sparse_matrix(adj)
+    return graph
 
 
 def output_res(partition, outfile_name):
