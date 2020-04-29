@@ -21,6 +21,9 @@ import argparse
 
 from utils import load_dataset, load_feature, load_graph, output_res, evaluate, generate_2hop_graph, generate_sim_graph
 
+
+np.random.seed(2020)
+
 def validation(args):
     for name in ("../train/train_0.npz", "../train/train_1.npz", "../train/train_2.npz"):
         graph = load_dataset(name)
@@ -72,4 +75,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     validation(args)
-    # predict(args)
+    predict(args)
