@@ -138,15 +138,20 @@ def generate_sim_graph(adj, feature, threshold=0.5):
     import torch
     # feature = feature.tolil()
     feature = torch.from_numpy(feature.toarray()).cuda()
+    # maxf = torch.max(feature, dim=0, keepdim=True)[0]
+    # minf = torch.min(feature, dim=0, keepdim=True)[0]
+    # feature = (feature - minf) / (maxf - minf)
     inner_prod = torch.matmul(feature, feature.transpose(0, 1))
     modulus = torch.sqrt(torch.pow(feature, 2).sum(dim=1, keepdim=True))
-    modulus = modulus * modulus.transpose(1, 0)
+    modulus = modulus * modulus.transpose(1, 0) + 1e-9
     cos_sim = inner_prod / modulus
-    print('cos_sim:', cos_sim.shape)
     adj = adj.tolil()
-    adj[(cos_sim>threshold).cpu().numpy()] = 1
+    A2 = adj * adj > 0
+    As = sp.csr_matrix(cos_sim.cpu().numpy()) > threshold 
+
+    adj[A2.multiply(As)] = 1
     adj.setdiag(0)
-    graph = nx.from_numpy_array(adj)
+    graph = nx.from_scipy_sparse_matrix(adj)
     return graph
 
 
